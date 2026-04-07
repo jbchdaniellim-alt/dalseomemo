@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">생명의 말씀 잠금화면</string>
+    <string name="title_activity_lock_screen">말씀 잠금화면</string>
+</resources>
