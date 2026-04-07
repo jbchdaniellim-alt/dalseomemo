@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    @apply antialiased overflow-x-hidden;
+    overscroll-behavior-y: none; /* Disable pull-to-refresh for native feel */
+    -webkit-tap-highlight-color: transparent;
+    user-select: none; /* Prevent accidental text selection on UI */
+  }
+
+  input, textarea {
+    user-select: text; /* Allow text selection in inputs */
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
