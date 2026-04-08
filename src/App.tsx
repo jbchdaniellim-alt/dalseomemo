@@ -55,7 +55,6 @@ export default function App() {
   const [newVerseReference, setNewVerseReference] = useState('');
   const [newVerseCategory, setNewVerseCategory] = useState(Categories[0]);
   const [newVerseBackground, setNewVerseBackground] = useState('#004098');
-  const [newVerseIsPinned, setNewVerseIsPinned] = useState(true);
   
   const [newVerseFontFamily, setNewVerseFontFamily] = useState(Fonts[0].value);
   const [newVerseFontSize, setNewVerseFontSize] = useState(FontSizes[2].value);
@@ -78,8 +77,10 @@ export default function App() {
 
   const [isLockScreenOpen, setIsLockScreenOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  const [editingVerse, setEditingVerse] = useState<Verse | null>(null);
   const [showVerseOnLockScreen, setShowVerseOnLockScreen] = useState(true);
   const [useWakeLockEnabled, setUseWakeLockEnabled] = useState(true);
+  const [isSystemOverlayEnabled, setIsSystemOverlayEnabled] = useState(true);
   const [wakeLock, setWakeLock] = useState<any>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -257,7 +258,7 @@ export default function App() {
       reference: newVerseReference,
       category: newVerseCategory,
       background: newVerseBackground,
-      pinned: newVerseIsPinned,
+      pinned: false,
       fontFamily: newVerseFontFamily,
       fontSize: newVerseFontSize,
       bgColor: newVerseBgColor,
@@ -281,6 +282,12 @@ export default function App() {
     setVerses([newVerse, ...verses]);
     setNewVerseText('');
     setNewVerseReference('');
+    setShowStyleEditor(false);
+  };
+
+  const handleUpdateVerse = (updatedVerse: Verse) => {
+    setVerses(verses.map(v => v.id === updatedVerse.id ? updatedVerse : v));
+    setEditingVerse(null);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -315,6 +322,26 @@ export default function App() {
             <span className="font-bold text-lg tracking-tight text-[#004098]">생명의 말씀 선교회</span>
           </div>
           <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-2 mr-2">
+              <div className="flex items-center gap-2 justify-end">
+                <span className="text-[9px] font-bold text-slate-400 uppercase">오버레이</span>
+                <button
+                  onClick={() => setIsSystemOverlayEnabled(!isSystemOverlayEnabled)}
+                  className={`relative w-8 h-4 rounded-full transition-colors ${isSystemOverlayEnabled ? 'bg-[#004098]' : 'bg-slate-200'}`}
+                  title="휴대폰 켤 때 항상 말씀 오버레이"
+                >
+                  <motion.div
+                    animate={{ x: isSystemOverlayEnabled ? 18 : 2 }}
+                    className="absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-sm"
+                  />
+                </button>
+              </div>
+              {isSystemOverlayEnabled && (
+                <p className="text-[8px] text-slate-400 text-right leading-tight">
+                  안드로이드 설정에서 '다른 앱 위에 표시' 및<br/>'잠금화면 위에 표시' 권한 허용이 필요합니다.
+                </p>
+              )}
+            </div>
             {showInstallBtn && (
               <button
                 onClick={handleInstallApp}
@@ -413,31 +440,23 @@ export default function App() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">배경 스타일</label>
-                  <div className="flex flex-wrap gap-2">
-                    {['#004098', '#1e293b', '#475569', '#0f172a', '#1e1b4b', '#312e81'].map(color => (
-                      <button
-                        key={color}
-                        onClick={() => setNewVerseBackground(color)}
-                        className={`w-8 h-8 rounded-full border-2 transition-all ${newVerseBackground === color ? 'border-[#004098] scale-110 shadow-md' : 'border-transparent'}`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                    <button
-                      onClick={() => setShowStyleEditor(!showStyleEditor)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${showStyleEditor ? 'bg-[#004098] text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                    >
-                      <Plus className="w-3 h-3" />
-                      상세 옵션
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setShowStyleEditor(!showStyleEditor)}
+                    className={`w-full py-3 rounded-2xl flex items-center justify-between px-4 transition-all ${showStyleEditor ? 'bg-[#004098]/5 ring-1 ring-[#004098]/20' : 'bg-slate-50 hover:bg-slate-100'}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className={`w-4 h-4 ${showStyleEditor ? 'text-[#004098]' : 'text-slate-400'}`} />
+                      <span className={`text-sm font-bold ${showStyleEditor ? 'text-[#004098]' : 'text-slate-600'}`}>디자인 상세 설정</span>
+                    </div>
+                    <ChevronRight className={`w-4 h-4 transition-transform ${showStyleEditor ? 'rotate-90 text-[#004098]' : 'text-slate-400'}`} />
+                  </button>
                 </div>
 
                 {showStyleEditor && (
                   <motion.div 
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="p-4 bg-slate-50 rounded-2xl space-y-6 overflow-hidden"
+                    className="p-4 bg-slate-50 rounded-2xl space-y-6 overflow-hidden border border-slate-100"
                   >
                     {/* Group 1: 시스템 설정 */}
                     <div className="space-y-3">
@@ -576,7 +595,10 @@ export default function App() {
                           <input 
                             type="color" 
                             value={newVerseBgColor} 
-                            onChange={(e) => setNewVerseBgColor(e.target.value)}
+                            onChange={(e) => {
+                              setNewVerseBgColor(e.target.value);
+                              setNewVerseBackground(e.target.value);
+                            }}
                             className="w-6 h-6 rounded-full border-none p-0 cursor-pointer"
                           />
                         </div>
@@ -601,27 +623,6 @@ export default function App() {
                   </motion.div>
                 )}
 
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${newVerseIsPinned ? 'bg-[#004098]/10 text-[#004098]' : 'bg-slate-200 text-slate-400'}`}>
-                      <Lock className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">잠금화면 목록에 추가</p>
-                      <p className="text-[10px] text-slate-400">등록 후 바로 잠금화면 목록에 추가합니다.</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setNewVerseIsPinned(!newVerseIsPinned)}
-                    className={`relative w-12 h-6 rounded-full transition-colors ${newVerseIsPinned ? 'bg-[#004098]' : 'bg-slate-300'}`}
-                  >
-                    <motion.div
-                      animate={{ x: newVerseIsPinned ? 26 : 2 }}
-                      className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-                    />
-                  </button>
-                </div>
-
                 <button
                   onClick={handleAddVerse}
                   disabled={!newVerseText || !newVerseReference}
@@ -634,40 +635,51 @@ export default function App() {
           </div>
 
           {/* Verses List */}
-          <main className="px-6 mt-10 space-y-8 pb-24">
+          <main className="px-6 mt-10 space-y-4 pb-24">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-6 bg-slate-200 rounded-full" />
+                <div className="w-1.5 h-6 bg-[#004098] rounded-full" />
                 <h2 className="font-bold text-lg">나의 말씀 저장소</h2>
               </div>
               <button 
                 onClick={() => setIsCategoryManagerOpen(true)}
-                className="text-xs font-bold text-[#004098] bg-[#004098]/5 px-4 py-2 rounded-full hover:bg-[#004098]/10 transition-all"
+                className="text-[10px] font-bold text-[#004098] bg-[#004098]/5 px-3 py-1.5 rounded-full hover:bg-[#004098]/10 transition-all"
               >
-                분류 관리하기
+                분류 관리
               </button>
             </div>
 
             {verses.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
-                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Plus className="w-6 h-6 text-slate-300" />
-                </div>
-                <p className="text-slate-400">등록된 말씀이 없습니다.</p>
+              <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
+                <p className="text-slate-400 text-sm">등록된 말씀이 없습니다.</p>
               </div>
             ) : (
-              verses.map((verse) => (
-                <div key={verse.id}>
-                  <VerseCard
+              <div className="space-y-2">
+                {verses.map((verse) => (
+                  <CompactVerseItem
+                    key={verse.id}
                     verse={verse}
-                    onShowLockScreen={startLockScreenMode}
+                    onShowLockScreen={() => startLockScreenMode(verse)}
+                    onEdit={() => setEditingVerse(verse)}
                     onTogglePin={() => handleTogglePin(verse.id)}
-                    isAuthor={true}
+                    onDelete={() => setVerses(verses.filter(v => v.id !== verse.id))}
                   />
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </main>
+
+        {/* Edit Verse Modal */}
+        <AnimatePresence>
+          {editingVerse && (
+            <EditVerseModal
+              verse={editingVerse}
+              categories={categories}
+              onClose={() => setEditingVerse(null)}
+              onSave={handleUpdateVerse}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Category Manager Modal */}
         <AnimatePresence>
@@ -793,6 +805,203 @@ export default function App() {
             )}
         </AnimatePresence>
       </div>
+    </div>
+  );
+}
+
+interface CompactVerseItemProps {
+  key?: string | number;
+  verse: Verse;
+  onShowLockScreen: () => void | Promise<void>;
+  onEdit: () => void;
+  onTogglePin: () => void;
+  onDelete: () => void;
+}
+
+function CompactVerseItem({ verse, onShowLockScreen, onEdit, onTogglePin, onDelete }: CompactVerseItemProps) {
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3 hover:border-[#004098]/30 transition-all group"
+    >
+      {/* Category Badge */}
+      <div className="shrink-0 w-12 text-center">
+        <span className="text-[9px] font-bold text-[#004098] bg-[#004098]/5 px-1.5 py-0.5 rounded-md block truncate">
+          {verse.category}
+        </span>
+      </div>
+
+      {/* Verse Info */}
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={onEdit}>
+        <p className="text-xs font-medium text-slate-700 truncate mb-0.5">
+          {verse.text}
+        </p>
+        <p className="text-[10px] text-slate-400 font-bold">
+          {verse.reference}
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onTogglePin}
+          className={`p-2 rounded-xl transition-all ${
+            verse.pinned ? 'bg-[#004098] text-white' : 'bg-slate-50 text-slate-300 hover:text-slate-400'
+          }`}
+          title={verse.pinned ? "잠금화면 표시 중" : "잠금화면 표시 안함"}
+        >
+          {verse.pinned ? <Pin className="w-3.5 h-3.5" /> : <PinOff className="w-3.5 h-3.5" />}
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+function EditVerseModal({ verse, categories, onClose, onSave }: { 
+  verse: Verse; 
+  categories: string[];
+  onClose: () => void;
+  onSave: (v: Verse) => void;
+}) {
+  const [text, setText] = useState(verse.text);
+  const [ref, setRef] = useState(verse.reference);
+  const [cat, setCat] = useState(verse.category);
+  const [bg, setBg] = useState(verse.background);
+  const [style, setStyle] = useState(verse);
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+      />
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        className="relative w-full max-w-md bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold">말씀 수정하기</h2>
+          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="space-y-6">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase">말씀 구절</label>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm min-h-[100px] resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">장절 정보</label>
+              <input
+                type="text"
+                value={ref}
+                onChange={(e) => setRef(e.target.value)}
+                className="w-full p-3 bg-slate-50 border-none rounded-xl text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase">분류</label>
+              <select
+                value={cat}
+                onChange={(e) => setCat(e.target.value)}
+                className="w-full p-3 bg-slate-50 border-none rounded-xl text-sm"
+              >
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Style Options */}
+          <div className="space-y-4 pt-4 border-t border-slate-100">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-slate-400 uppercase">글꼴</label>
+                <select 
+                  value={style.fontFamily} 
+                  onChange={(e) => setStyle({...style, fontFamily: e.target.value})}
+                  className="w-full p-2 bg-slate-50 rounded-lg text-xs"
+                >
+                  {Fonts.map(f => <option key={f.value} value={f.value}>{f.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-slate-400 uppercase">크기</label>
+                <select 
+                  value={style.fontSize} 
+                  onChange={(e) => setStyle({...style, fontSize: e.target.value})}
+                  className="w-full p-2 bg-slate-50 rounded-lg text-xs"
+                >
+                  {FontSizes.map(s => <option key={s.value} value={s.value}>{s.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">글자색</label>
+                  <input type="color" value={style.textColor} onChange={(e) => setStyle({...style, textColor: e.target.value})} className="w-6 h-6 rounded-full border-none p-0" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase">배경색</label>
+                  <input type="color" value={style.bgColor} onChange={(e) => {
+                    setStyle({...style, bgColor: e.target.value});
+                    setBg(e.target.value);
+                  }} className="w-6 h-6 rounded-full border-none p-0" />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1 items-end">
+                <label className="text-[9px] font-bold text-slate-400 uppercase">배경 투명도</label>
+                <input type="range" min="0" max="1" step="0.1" value={style.bgOpacity} onChange={(e) => setStyle({...style, bgOpacity: parseFloat(e.target.value)})} className="w-24 accent-[#004098]" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-slate-400 uppercase">배경 이미지</label>
+              <label className="flex items-center justify-center gap-2 p-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer">
+                <ImageIcon className="w-4 h-4 text-slate-400" />
+                <span className="text-xs font-medium">사진 변경</span>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setBg(reader.result as string);
+                    reader.readAsDataURL(file);
+                  }
+                }} />
+              </label>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button onClick={onClose} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold">취소</button>
+            <button 
+              onClick={() => onSave({...style, text, reference: ref, category: cat, background: bg})}
+              className="flex-1 py-4 bg-[#004098] text-white rounded-2xl font-bold shadow-lg shadow-blue-100"
+            >
+              저장하기
+            </button>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -925,86 +1134,100 @@ function LockScreen({ verses, showVerse, onToggleVerse, onClose, onDeleteVerse }
   onClose: () => void;
   onDeleteVerse: (id: string) => void;
 }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const currentVerse = verses[currentIndex];
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black"
+      className="fixed inset-0 z-[100] bg-black overflow-y-auto snap-y snap-mandatory scroll-smooth no-scrollbar"
     >
-      {currentVerse && (
-        <div className="absolute inset-0">
-          {currentVerse.background.startsWith('http') || currentVerse.background.startsWith('data:') ? (
-            <img
-              src={currentVerse.background}
-              className={`absolute inset-0 w-full h-full object-cover ${currentVerse.bgBlur || 'blur-none'} ${currentVerse.bgBrightness || 'brightness-100'}`}
-              referrerPolicy="no-referrer"
-              alt="말씀 배경"
-            />
-          ) : (
-            <div 
-              className="absolute inset-0 w-full h-full" 
-              style={{ backgroundColor: currentVerse.background }}
-            />
-          )}
-          
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center">
-            <div 
-              className={`absolute inset-0 m-8 ${currentVerse.borderRadius || 'rounded-[3rem]'} backdrop-blur-md border-2`}
-              style={{ 
-                backgroundColor: currentVerse.bgColor || 'rgba(0,0,0,0.4)',
-                opacity: currentVerse.bgOpacity ?? 0.8,
-                borderColor: currentVerse.borderColor || 'transparent'
-              }}
-            />
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentVerse.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="w-full"
-              >
-                <p className="text-white/60 text-xs tracking-[0.3em] uppercase mb-8 font-bold">
-                  {currentVerse.category}
-                </p>
-                <h1 className="text-white text-3xl font-serif italic leading-relaxed mb-6 drop-shadow-2xl">
-                  "{currentVerse.text}"
-                </h1>
-                <p className="text-white/80 text-sm tracking-widest font-bold uppercase">
-                  — {currentVerse.reference}
-                </p>
-              </motion.div>
-            </AnimatePresence>
+      {verses.length > 0 ? (
+        verses.map((verse) => (
+          <div key={verse.id} className="w-full h-screen snap-start relative shrink-0">
+            {/* Background */}
+            {verse.background.startsWith('http') || verse.background.startsWith('data:') ? (
+              <img
+                src={verse.background}
+                className={`absolute inset-0 w-full h-full object-cover ${verse.bgBlur || 'blur-none'} ${verse.bgBrightness || 'brightness-100'}`}
+                referrerPolicy="no-referrer"
+                alt="말씀 배경"
+              />
+            ) : (
+              <div 
+                className="absolute inset-0 w-full h-full" 
+                style={{ backgroundColor: verse.background }}
+              />
+            )}
+
+            {/* Content Overlay */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center">
+              <div 
+                className={`absolute inset-0 m-6 ${verse.borderRadius || 'rounded-[3rem]'} backdrop-blur-md border-2`}
+                style={{ 
+                  backgroundColor: verse.bgColor || 'rgba(0,0,0,0.4)',
+                  opacity: verse.bgOpacity ?? 0.8,
+                  borderColor: verse.borderColor || 'transparent'
+                }}
+              />
+              
+              <div className="relative z-10 w-full max-w-xs">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <p className="text-white/60 text-[10px] tracking-[0.4em] uppercase mb-8 font-bold">
+                    {verse.category}
+                  </p>
+                  <h1 
+                    className={`text-white leading-tight mb-8 drop-shadow-2xl ${verse.fontFamily || 'font-serif'} ${verse.fontSize || 'text-3xl'} ${verse.fontWeight || 'font-medium'} ${verse.letterSpacing || 'tracking-normal'} ${verse.lineHeight || 'leading-relaxed'}`}
+                    style={{ 
+                      color: verse.textColor || 'white',
+                      textAlign: verse.textAlign || 'center'
+                    }}
+                  >
+                    "{verse.text}"
+                  </h1>
+                  <p 
+                    className={`font-bold tracking-widest uppercase opacity-90 ${verse.refFontSize || 'text-sm'}`}
+                    style={{ 
+                      color: verse.refColor || verse.textColor || 'white',
+                      textAlign: verse.refTextAlign || verse.textAlign || 'center'
+                    }}
+                  >
+                    — {verse.reference}
+                  </p>
+                </motion.div>
+              </div>
+            </div>
+
+            {/* Scroll Indicator for multiple verses */}
+            {verses.indexOf(verse) < verses.length - 1 && (
+              <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 opacity-40 animate-bounce">
+                <span className="text-[10px] text-white font-bold tracking-tighter uppercase">다음 말씀</span>
+                <ArrowDown className="w-4 h-4 text-white" />
+              </div>
+            )}
           </div>
+        ))
+      ) : (
+        <div className="w-full h-screen flex items-center justify-center text-white">
+          <p>표시할 말씀이 없습니다.</p>
         </div>
       )}
 
-      {/* Controls */}
-      <div className="absolute bottom-12 left-0 right-0 px-8 flex items-center justify-between">
+      {/* Global Controls */}
+      <div className="fixed bottom-10 left-0 right-0 px-8 flex items-center justify-between z-[110]">
         <button 
           onClick={onClose}
-          className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20"
+          className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center text-white border border-white/20 shadow-2xl hover:bg-white/20 transition-all"
         >
-          <X className="w-6 h-6" />
+          <X className="w-7 h-7" />
         </button>
         
-        <div className="flex gap-4">
-          <button 
-            onClick={() => setCurrentIndex((prev) => (prev > 0 ? prev - 1 : verses.length - 1))}
-            className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20"
-          >
-            <ChevronRight className="w-6 h-6 rotate-180" />
-          </button>
-          <button 
-            onClick={() => setCurrentIndex((prev) => (prev < verses.length - 1 ? prev + 1 : 0))}
-            className="w-12 h-12 rounded-full bg-[#004098] flex items-center justify-center text-white shadow-lg shadow-blue-900/50"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
+        <div className="px-6 py-3 bg-white/10 backdrop-blur-xl rounded-full border border-white/20 text-white/60 text-[10px] font-bold tracking-widest uppercase">
+          위아래로 스크롤하여 묵상
         </div>
       </div>
     </motion.div>
