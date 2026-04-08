@@ -1,5 +1,5 @@
 {
   "name": "생명의 말씀 (Android Native)",
   "description": "안드로이드 시스템 잠금화면 위에 말씀을 항상 띄워주는 네이티브 앱 프로젝트입니다. (Kotlin/Gradle)",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["screen-wake-lock"]
 }

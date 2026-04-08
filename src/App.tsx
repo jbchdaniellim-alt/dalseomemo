@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Lock, Plus, ChevronRight, X, Pin, PinOff, Trash2, Download, User as UserIcon, GripVertical, ArrowUp, ArrowDown, Info } from 'lucide-react';
+import { Lock, Plus, ChevronRight, X, Pin, PinOff, Trash2, Download, User as UserIcon, GripVertical, ArrowUp, ArrowDown, Info, Image as ImageIcon, Monitor } from 'lucide-react';
 
 // --- Types ---
 interface Verse {
@@ -14,6 +14,7 @@ interface Verse {
   fontFamily?: string;
   fontSize?: string;
   bgColor?: string;
+  bgOpacity?: number;
   textColor?: string;
   textAlign?: 'left' | 'center' | 'right';
   verticalAlign?: 'top' | 'center' | 'bottom';
@@ -58,7 +59,8 @@ export default function App() {
   
   const [newVerseFontFamily, setNewVerseFontFamily] = useState(Fonts[0].value);
   const [newVerseFontSize, setNewVerseFontSize] = useState(FontSizes[2].value);
-  const [newVerseBgColor, setNewVerseBgColor] = useState('rgba(0, 64, 152, 0.8)');
+  const [newVerseBgColor, setNewVerseBgColor] = useState('#004098');
+  const [newVerseBgOpacity, setNewVerseBgOpacity] = useState(0.8);
   const [newVerseTextColor, setNewVerseTextColor] = useState('#ffffff');
   const [newVerseTextAlign, setNewVerseTextAlign] = useState<'left' | 'center' | 'right'>('center');
   const [newVerseVerticalAlign, setNewVerseVerticalAlign] = useState<'top' | 'center' | 'bottom'>('center');
@@ -77,6 +79,7 @@ export default function App() {
   const [isLockScreenOpen, setIsLockScreenOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const [showVerseOnLockScreen, setShowVerseOnLockScreen] = useState(true);
+  const [useWakeLockEnabled, setUseWakeLockEnabled] = useState(true);
   const [wakeLock, setWakeLock] = useState<any>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -97,6 +100,7 @@ export default function App() {
   }, []);
 
   const requestWakeLock = async () => {
+    if (!useWakeLockEnabled) return;
     if ('wakeLock' in navigator) {
       try {
         const lock = await (navigator as any).wakeLock.request('screen');
@@ -105,7 +109,11 @@ export default function App() {
           setWakeLock(null);
         });
       } catch (err: any) {
-        console.error(`${err.name}, ${err.message}`);
+        if (err.name === 'NotAllowedError') {
+          console.warn("Wake Lock is restricted in this environment (e.g., iframe). This will work correctly in the native Android app.");
+        } else {
+          console.error(`${err.name}, ${err.message}`);
+        }
       }
     }
   };
@@ -253,6 +261,7 @@ export default function App() {
       fontFamily: newVerseFontFamily,
       fontSize: newVerseFontSize,
       bgColor: newVerseBgColor,
+      bgOpacity: newVerseBgOpacity,
       textColor: newVerseTextColor,
       textAlign: newVerseTextAlign,
       verticalAlign: newVerseVerticalAlign,
@@ -272,6 +281,17 @@ export default function App() {
     setVerses([newVerse, ...verses]);
     setNewVerseText('');
     setNewVerseReference('');
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewVerseBackground(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleTogglePin = (id: string) => {
@@ -408,7 +428,7 @@ export default function App() {
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${showStyleEditor ? 'bg-[#004098] text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                     >
                       <Plus className="w-3 h-3" />
-                      상세 스타일
+                      상세 옵션
                     </button>
                   </div>
                 </div>
@@ -417,32 +437,68 @@ export default function App() {
                   <motion.div 
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="p-4 bg-slate-50 rounded-2xl space-y-4 overflow-hidden"
+                    className="p-4 bg-slate-50 rounded-2xl space-y-6 overflow-hidden"
                   >
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">글꼴</label>
-                        <select 
-                          value={newVerseFontFamily} 
-                          onChange={(e) => setNewVerseFontFamily(e.target.value)}
-                          className="w-full p-2 bg-white rounded-lg text-xs border-none"
-                        >
-                          {Fonts.map(f => <option key={f.value} value={f.value}>{f.name}</option>)}
-                        </select>
+                    {/* Group 1: 시스템 설정 */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Monitor className="w-3 h-3 text-[#004098]" />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">시스템 설정</span>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">크기</label>
-                        <select 
-                          value={newVerseFontSize} 
-                          onChange={(e) => setNewVerseFontSize(e.target.value)}
-                          className="w-full p-2 bg-white rounded-lg text-xs border-none"
+                      <div className="flex items-center justify-between p-3 bg-white rounded-xl">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="text-xs font-medium">화면 켜짐 유지 (Wake Lock)</span>
+                        </div>
+                        <button
+                          onClick={() => setUseWakeLockEnabled(!useWakeLockEnabled)}
+                          className={`relative w-10 h-5 rounded-full transition-colors ${useWakeLockEnabled ? 'bg-[#004098]' : 'bg-slate-200'}`}
                         >
-                          {FontSizes.map(s => <option key={s.value} value={s.value}>{s.name}</option>)}
-                        </select>
+                          <motion.div
+                            animate={{ x: useWakeLockEnabled ? 22 : 2 }}
+                            className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm"
+                          />
+                        </button>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Group 2: 말씀 스타일 */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <UserIcon className="w-3 h-3 text-[#004098]" />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">말씀 스타일</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">글꼴</label>
+                          <select 
+                            value={newVerseFontFamily} 
+                            onChange={(e) => setNewVerseFontFamily(e.target.value)}
+                            className="w-full p-2 bg-white rounded-lg text-xs border-none"
+                          >
+                            {Fonts.map(f => <option key={f.value} value={f.value}>{f.name}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">크기</label>
+                          <select 
+                            value={newVerseFontSize} 
+                            onChange={(e) => setNewVerseFontSize(e.target.value)}
+                            className="w-full p-2 bg-white rounded-lg text-xs border-none"
+                          >
+                            {FontSizes.map(s => <option key={s.value} value={s.value}>{s.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-2 bg-white rounded-lg">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">글자 색상</label>
+                        <input 
+                          type="color" 
+                          value={newVerseTextColor} 
+                          onChange={(e) => setNewVerseTextColor(e.target.value)}
+                          className="w-6 h-6 rounded-full border-none p-0 cursor-pointer"
+                        />
+                      </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-bold text-slate-400 uppercase">정렬</label>
                         <div className="flex bg-white rounded-lg p-1">
@@ -457,55 +513,89 @@ export default function App() {
                           ))}
                         </div>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">수직 정렬</label>
-                        <div className="flex bg-white rounded-lg p-1">
-                          {(['top', 'center', 'bottom'] as const).map(align => (
-                            <button
-                              key={align}
-                              onClick={() => setNewVerseVerticalAlign(align)}
-                              className={`flex-1 py-1 text-[10px] rounded ${newVerseVerticalAlign === align ? 'bg-[#004098] text-white' : 'text-slate-400'}`}
-                            >
-                              {align === 'top' ? '상' : align === 'center' ? '중' : '하'}
-                            </button>
-                          ))}
+                    </div>
+
+                    {/* Group 3: 장절 스타일 */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Info className="w-3 h-3 text-[#004098]" />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">장절 스타일</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">크기</label>
+                          <select 
+                            value={newVerseRefFontSize} 
+                            onChange={(e) => setNewVerseRefFontSize(e.target.value)}
+                            className="w-full p-2 bg-white rounded-lg text-xs border-none"
+                          >
+                            {FontSizes.map(s => <option key={s.value} value={s.value}>{s.name}</option>)}
+                          </select>
                         </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">정렬</label>
+                          <div className="flex bg-white rounded-lg p-1">
+                            {(['left', 'center', 'right'] as const).map(align => (
+                              <button
+                                key={align}
+                                onClick={() => setNewVerseRefTextAlign(align)}
+                                className={`flex-1 py-1 text-[10px] rounded ${newVerseRefTextAlign === align ? 'bg-[#004098] text-white' : 'text-slate-400'}`}
+                              >
+                                {align === 'left' ? '좌' : align === 'center' ? '중' : '우'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-2 bg-white rounded-lg">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">장절 색상</label>
+                        <input 
+                          type="color" 
+                          value={newVerseRefColor} 
+                          onChange={(e) => setNewVerseRefColor(e.target.value)}
+                          className="w-6 h-6 rounded-full border-none p-0 cursor-pointer"
+                        />
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">배경색 & 투명도</label>
-                        <div className="flex items-center gap-2">
+                    {/* Group 4: 배경 스타일 */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ImageIcon className="w-3 h-3 text-[#004098]" />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">배경 스타일</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <label className="flex-1 flex items-center justify-center gap-2 p-3 bg-white border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-[#004098] transition-all">
+                          <ImageIcon className="w-4 h-4 text-slate-400" />
+                          <span className="text-xs font-medium text-slate-600">사진 업로드</span>
+                          <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                        </label>
+                        <div className="flex items-center gap-2 p-2 bg-white rounded-xl">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">색상</label>
                           <input 
                             type="color" 
-                            value={newVerseBgColor.startsWith('rgba') ? '#004098' : newVerseBgColor} 
+                            value={newVerseBgColor} 
                             onChange={(e) => setNewVerseBgColor(e.target.value)}
-                            className="w-6 h-6 rounded-full border-none p-0 cursor-pointer shrink-0"
+                            className="w-6 h-6 rounded-full border-none p-0 cursor-pointer"
                           />
                         </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">글자색</label>
-                        <div className="flex items-center gap-2">
-                          <input 
-                            type="color" 
-                            value={newVerseTextColor} 
-                            onChange={(e) => setNewVerseTextColor(e.target.value)}
-                            className="w-6 h-6 rounded-full border-none p-0 cursor-pointer shrink-0"
-                          />
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">배경 투명도</label>
+                          <span className="text-[10px] font-mono text-slate-400">{Math.round(newVerseBgOpacity * 100)}%</span>
                         </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">장절 색상</label>
-                        <div className="flex items-center gap-2">
-                          <input 
-                            type="color" 
-                            value={newVerseRefColor} 
-                            onChange={(e) => setNewVerseRefColor(e.target.value)}
-                            className="w-6 h-6 rounded-full border-none p-0 cursor-pointer shrink-0"
-                          />
-                        </div>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="1" 
+                          step="0.05" 
+                          value={newVerseBgOpacity} 
+                          onChange={(e) => setNewVerseBgOpacity(parseFloat(e.target.value))}
+                          className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#004098]"
+                        />
                       </div>
                     </div>
                   </motion.div>
@@ -725,10 +815,19 @@ function VerseCard({ verse, onShowLockScreen, onTogglePin, isAuthor }: {
         className="h-80 relative group cursor-pointer"
         onClick={() => onShowLockScreen(verse)}
       >
-        <div 
-          className="absolute inset-0 w-full h-full" 
-          style={{ backgroundColor: verse.background }}
-        />
+        {verse.background.startsWith('http') || verse.background.startsWith('data:') ? (
+          <img
+            src={verse.background}
+            className={`absolute inset-0 w-full h-full object-cover ${verse.bgBlur || 'blur-none'} ${verse.bgBrightness || 'brightness-100'}`}
+            referrerPolicy="no-referrer"
+            alt="말씀 배경"
+          />
+        ) : (
+          <div 
+            className="absolute inset-0 w-full h-full" 
+            style={{ backgroundColor: verse.background }}
+          />
+        )}
         <div 
           className={`absolute inset-0 flex flex-col p-6 ${
             verse.verticalAlign === 'top' ? 'justify-start' : 
@@ -743,6 +842,7 @@ function VerseCard({ verse, onShowLockScreen, onTogglePin, isAuthor }: {
             className={`absolute inset-0 m-4 ${verse.borderRadius || 'rounded-[2rem]'} backdrop-blur-sm border-2`}
             style={{ 
               backgroundColor: verse.bgColor || 'rgba(0,0,0,0.3)',
+              opacity: verse.bgOpacity ?? 0.8,
               borderColor: verse.borderColor || 'transparent'
             }}
           />
@@ -837,12 +937,29 @@ function LockScreen({ verses, showVerse, onToggleVerse, onClose, onDeleteVerse }
     >
       {currentVerse && (
         <div className="absolute inset-0">
-          <div 
-            className="absolute inset-0 w-full h-full" 
-            style={{ backgroundColor: currentVerse.background }}
-          />
+          {currentVerse.background.startsWith('http') || currentVerse.background.startsWith('data:') ? (
+            <img
+              src={currentVerse.background}
+              className={`absolute inset-0 w-full h-full object-cover ${currentVerse.bgBlur || 'blur-none'} ${currentVerse.bgBrightness || 'brightness-100'}`}
+              referrerPolicy="no-referrer"
+              alt="말씀 배경"
+            />
+          ) : (
+            <div 
+              className="absolute inset-0 w-full h-full" 
+              style={{ backgroundColor: currentVerse.background }}
+            />
+          )}
           
           <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center">
+            <div 
+              className={`absolute inset-0 m-8 ${currentVerse.borderRadius || 'rounded-[3rem]'} backdrop-blur-md border-2`}
+              style={{ 
+                backgroundColor: currentVerse.bgColor || 'rgba(0,0,0,0.4)',
+                opacity: currentVerse.bgOpacity ?? 0.8,
+                borderColor: currentVerse.borderColor || 'transparent'
+              }}
+            />
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentVerse.id}
